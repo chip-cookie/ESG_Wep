@@ -111,3 +111,10 @@ async def get_oil_prices():
     [Global] 실시간 유가 정보 (Brent/WTI) 조회
     """
     return await oil_price_service.get_latest_prices()
+
+@router.get("/market/current")
+async def get_current_market_status():
+    """
+    [Simulator Tab] KAU/EUA 실시간(또는 최신) 가격 및 등락률 조회
+    """
+    return market_service.get_current_prices()

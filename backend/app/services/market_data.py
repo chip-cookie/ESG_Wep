@@ -141,16 +141,18 @@ class MarketDataService:
         
         # 4. 현실적인 폴백 (모든 데이터 소스가 실패할 경우)
         if df_merge["EU_ETS"].isnull().all() or (df_merge["EU_ETS"] == 0).all():
-             print("Warning: EU_ETS data is all NaN or 0. Applying urgent mock fallback.")
-             dates = df_merge.index if not df_merge.empty else pd.date_range(start_date, end_date)
-             df_merge = pd.DataFrame(index=dates) if df_merge.empty else df_merge
-             df_merge["EU_ETS"] = 72.0 + np.cumsum(np.random.normal(0, 0.4, len(df_merge))) + np.random.normal(0, 1, len(df_merge))
+            print("Warning: EU_ETS data is all NaN or 0. Applying urgent mock fallback.")
+            dates = df_merge.index if not df_merge.empty else pd.date_range(start_date, end_date)
+            df_merge = pd.DataFrame(index=dates) if df_merge.empty else df_merge
+            np.random.seed(42) # 데이터 일관성을 위해 시드 고정
+            df_merge["EU_ETS"] = 72.0 + np.cumsum(np.random.normal(0, 0.4, len(df_merge))) + np.random.normal(0, 0.2, len(df_merge))
 
         if df_merge["K_ETS"].isnull().all() or (df_merge["K_ETS"] == 0).all():
-             print("Warning: K_ETS data is all NaN or 0. Applying urgent mock fallback.")
-             dates = df_merge.index if not df_merge.empty else pd.date_range(start_date, end_date)
-             df_merge = pd.DataFrame(index=dates) if df_merge.empty else df_merge
-             df_merge["K_ETS"] = 15500 + np.cumsum(np.random.normal(0, 100, len(df_merge))) + np.random.normal(0, 200, len(df_merge))
+            print("Warning: K_ETS data is all NaN or 0. Applying urgent mock fallback.")
+            dates = df_merge.index if not df_merge.empty else pd.date_range(start_date, end_date)
+            df_merge = pd.DataFrame(index=dates) if df_merge.empty else df_merge
+            np.random.seed(42) # 데이터 일관성을 위해 시드 고정
+            df_merge["K_ETS"] = 15500 + np.cumsum(np.random.normal(0, 50, len(df_merge))) + np.random.normal(0, 100, len(df_merge))
 
         df_merge = df_merge.ffill().bfill()
 
@@ -165,6 +167,61 @@ class MarketDataService:
                 "krPrice": int(kr_val)
             })
         return result
+
+    def get_current_prices(self):
+        """
+        [Real-time] 현재 KAU/EUA 가격 및 전일 대비 등락률 조회
+        """
+        try:
+            # 캐시가 없으면 로딩 시도
+            if not MarketDataService._cache:
+                # 동기 환경에서 호출 시, async 함수를 바로 못 부르므로 
+                # (여기서는 간단히 KRX만 실시간 조회하거나, 캐시가 비어있으면 기본값 리턴)
+                pass 
+            
+            # 1. K-ETS (한국)
+            kr_data = self.get_carbon_price_krx()
+            
+            # 2. EU-ETS (유럽)
+            eu_price = 74.50
+            
+            # ★ 핵심: 차트 데이터와 실시간 카드 가격 일치시키기
+            if MarketDataService._cache:
+                latest = MarketDataService._cache[-1]
+                kr_data['price'] = latest['krPrice']
+                eu_price = latest['euPrice']
+
+            # 변동률 계산 (최근 2일 데이터 비교)
+            kr_change = 0.0
+            eu_change = 0.0
+            if len(MarketDataService._cache) >= 2:
+                yesterday = MarketDataService._cache[-2]
+                today = MarketDataService._cache[-1]
+                
+                if yesterday['krPrice'] > 0:
+                    kr_change = ((today['krPrice'] - yesterday['krPrice']) / yesterday['krPrice']) * 100
+                if yesterday['euPrice'] > 0:
+                    eu_change = ((today['euPrice'] - yesterday['euPrice']) / yesterday['euPrice']) * 100
+
+            return {
+                "K-ETS": {
+                    "price": kr_data['price'],
+                    "change": round(kr_change, 2),
+                    "ticker": "KAU"
+                },
+                "EU-ETS": {
+                    "price": eu_price,
+                    "change": round(eu_change, 2),
+                    "ticker": "EUA"
+                }
+            }
+        except Exception as e:
+            print(f"[Error] get_current_prices: {e}")
+            return {
+                "K-ETS": {"price": 15450, "change": 0.0, "ticker": "KAU"},
+                "EU-ETS": {"price": 74.50, "change": 0.0, "ticker": "EUA"}
+            }
+
 
     async def get_dual_market_history(self, period: str = "1y"):
         """

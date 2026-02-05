@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
@@ -46,11 +46,45 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({
     estimatedSavings,
     generateAIPlan
 }) => {
+    const [marketData, setMarketData] = useState(MARKET_DATA);
+
+    useEffect(() => {
+        const fetchMarketData = async () => {
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/sim/market/current');
+                if (response.ok) {
+                    const data = await response.json();
+
+                    setMarketData(prev => ({
+                        ...prev,
+                        'K-ETS': {
+                            ...prev['K-ETS'],
+                            price: data['K-ETS'].price,
+                            change: data['K-ETS'].change,
+                            // ticker could be updated if backend returns it, mainly ensuring consistency
+                        },
+                        'EU-ETS': {
+                            ...prev['EU-ETS'],
+                            price: data['EU-ETS'].price,
+                            change: data['EU-ETS'].change
+                        }
+                    }));
+                }
+            } catch (error) {
+                console.error("Failed to fetch market data", error);
+            }
+        };
+        fetchMarketData();
+        // Optional: Polling every 1 min
+        const interval = setInterval(fetchMarketData, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
             {/* Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {Object.values(MARKET_DATA).map((market) => {
+                {Object.values(marketData).map((market) => {
                     const isActive = selectedMarket === market.id;
                     return (
                         <Card
@@ -92,7 +126,7 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({
                         <p className="text-sm text-slate-500">다중 시장 수렴 분석 (Convergence Analysis)</p>
                         <div className="flex gap-2 mt-2">
                             <p className="text-[10px] text-[#10b77f] font-bold bg-[#10b77f]/10 w-fit px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <Database size={10} /> Source: EEX & KRX Data
+                                <Database size={10} /> 출처: EEX & KRX 데이터
                             </p>
                         </div>
                     </div>
@@ -133,10 +167,10 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({
                             />
 
                             {/* Left Axis: EU-ETS (EUR) */}
-                            <YAxis yAxisId="left" orientation="left" hide={false} domain={['auto', 'auto']} tick={{ fontSize: 10, fill: '#a5d8ff' }} label={{ value: 'EUR', angle: -90, position: 'insideLeft', fill: '#a5d8ff', fontSize: 10 }} />
+                            <YAxis yAxisId="left" orientation="left" hide={false} domain={['auto', 'auto']} tick={{ fontSize: 10, fill: '#a5d8ff' }} label={{ value: '유로 (EUR)', angle: -90, position: 'insideLeft', fill: '#a5d8ff', fontSize: 10 }} />
 
                             {/* Right Axis: K-ETS (KRW) */}
-                            <YAxis yAxisId="right" orientation="right" hide={false} domain={['auto', 'auto']} tick={{ fontSize: 10, fill: '#10b77f' }} label={{ value: 'KRW', angle: 90, position: 'insideRight', fill: '#10b77f', fontSize: 10 }} />
+                            <YAxis yAxisId="right" orientation="right" hide={false} domain={['auto', 'auto']} tick={{ fontSize: 10, fill: '#10b77f' }} label={{ value: '원 (KRW)', angle: 90, position: 'insideRight', fill: '#10b77f', fontSize: 10 }} />
 
                             <Tooltip content={<CustomTooltip />} />
                             {(timeRange !== '1개월') && (
@@ -151,7 +185,7 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({
                                 yAxisId="left"
                                 type="monotone"
                                 dataKey="euPrice"
-                                name="EU-ETS"
+                                name="유럽 (EU-ETS)"
                                 stroke={MARKET_DATA['EU-ETS'].color}
                                 strokeWidth={selectedMarket === 'EU-ETS' ? 3 : 1.5}
                                 strokeOpacity={selectedMarket === 'EU-ETS' ? 1 : 0.6}
@@ -166,7 +200,7 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({
                                 yAxisId="right"
                                 type="monotone"
                                 dataKey="krPrice"
-                                name="K-ETS"
+                                name="한국 (K-ETS)"
                                 stroke={MARKET_DATA['K-ETS'].color}
                                 strokeWidth={selectedMarket === 'K-ETS' ? 3 : 1.5}
                                 strokeOpacity={selectedMarket === 'K-ETS' ? 1 : 0.6}
@@ -238,7 +272,7 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({
                         <div className="flex flex-col gap-6 mb-8">
                             <div className="flex flex-col gap-2">
                                 <div className="flex justify-between text-sm">
-                                    <label className="text-slate-300">예산 배정 (Budget)</label>
+                                    <label className="text-slate-300">예산 배정</label>
                                     <span className="font-mono text-[#10b77f]">{simBudget}%</span>
                                 </div>
                                 <input
@@ -251,7 +285,7 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({
                             </div>
                             <div className="flex flex-col gap-2">
                                 <div className="flex justify-between text-sm">
-                                    <label className="text-slate-300">리스크 허용범위 (Risk)</label>
+                                    <label className="text-slate-300">리스크 허용범위</label>
                                     <span className="font-mono text-[#10b77f]">{simRisk < 30 ? '낮음' : simRisk < 70 ? '중간' : '높음'}</span>
                                 </div>
                                 <input

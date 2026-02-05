@@ -22,7 +22,7 @@ export const MOCK_COMPANIES: CompanyConfig[] = [
 ];
 
 export const MARKET_DATA: Record<MarketType, MarketInfo> = {
-    'K-ETS': { id: 'K-ETS', name: '한국', ticker: 'KAU25', price: 15450, currency: 'KRW', change: 1.2, color: '#10b77f', desc: 'KAU25 할당배출권', high: 16500, low: 13800, volatility: 'Low' },
+    'K-ETS': { id: 'K-ETS', name: '한국', ticker: 'KAU', price: 15450, currency: 'KRW', change: 1.2, color: '#10b77f', desc: 'KAU 할당배출권', high: 16500, low: 13800, volatility: 'Low' },
     'EU-ETS': { id: 'EU-ETS', name: '유럽 통합', ticker: 'EUA', price: 74.50, currency: 'EUR', change: -0.5, color: '#a5d8ff', desc: '글로벌 벤치마크', high: 76.20, low: 72.80, volatility: 'High' },
 };
 

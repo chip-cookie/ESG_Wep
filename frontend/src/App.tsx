@@ -70,8 +70,8 @@ const App: React.FC = () => {
           const fallbackData: TrendData[] = [];
           const startDate = new Date('2023-01-01');
           const endDate = new Date();
-          let krPrice = 13500;
-          let euPrice = 72.0;
+          let krPrice = 15450;
+          let euPrice = 74.50;
           for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
             if (d.getDay() === 0 || d.getDay() === 6) continue;
             krPrice += (Math.random() - 0.5) * 200;
